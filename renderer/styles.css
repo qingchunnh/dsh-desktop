@@ -1,0 +1,307 @@
+/**
+ * dsh-desktop 启动器页样式。
+ * 配色与设计令牌复刻自 deepseek-harness 的 ui-theme 包
+ * (packages/client/ui-theme/src/styles/design-platform.css 中的 --dsw-alias-* 变量),
+ * 并跟随系统深浅色模式切换。
+ */
+
+:root {
+  /* 浅色主题(对应 dsw 浅色 token) */
+  --bg-page: rgb(245, 246, 247);        /* bg-module-platform / neutral-bluish-60 */
+  --bg-card: rgb(255, 255, 255);        /* bg-layer-2 / neutral-bluish-00 */
+  --border: rgba(0, 0, 0, 0.1);         /* border-l2 */
+  --label-primary: rgb(15, 17, 21);     /* neutral-bluish-1000 */
+  --label-secondary: rgb(97, 102, 107); /* neutral-bluish-700 */
+  --label-tertiary: rgb(129, 133, 140); /* neutral-bluish-600 */
+  --btn-primary-fill: rgb(15, 17, 21);  /* button-primary-fill(浅色下为近黑) */
+  --btn-primary-hover: rgb(67, 69, 74); /* button-primary-hover / neutral-bluish-750 */
+  --btn-primary-fg: rgb(255, 255, 255); /* label-primary-foreground */
+  --btn-secondary-fill: rgb(255, 255, 255);
+  --btn-secondary-hover: rgb(241, 243, 245); /* interactive-bg-hover-solid / neutral-bluish-75 */
+  --accent: rgb(65, 118, 230);          /* state-business-primary / deepseek-500 */
+  --accent-tint: rgba(65, 118, 230, 0.1);
+  --error: rgb(236, 19, 19);            /* state-error-primary / red-600 */
+  --warn: rgb(245, 158, 11);            /* state-warn-primary / amber-500 */
+  --code-bg: rgb(250, 250, 251);        /* markdown-code-block / neutral-bluish-50 */
+  --spinner-track: rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 深色主题(对应 dsw 深色 token) */
+    --bg-page: rgb(21, 21, 23);           /* bg-base / neutral-bluish-950 */
+    --bg-card: rgb(44, 44, 46);           /* bg-layer-2 / neutral-bluish-850 */
+    --border: rgba(255, 255, 255, 0.12);
+    --label-primary: rgb(249, 250, 251);  /* neutral-bluish-50 */
+    --label-secondary: rgb(207, 211, 214);/* neutral-bluish-300 */
+    --label-tertiary: rgb(173, 178, 184); /* neutral-bluish-400 */
+    --btn-primary-fill: rgb(249, 250, 251);/* 深色下主按钮为浅色 */
+    --btn-primary-hover: rgb(235, 238, 242); /* neutral-bluish-100 */
+    --btn-primary-fg: rgb(15, 17, 21);
+    --btn-secondary-fill: rgb(44, 44, 46);
+    --btn-secondary-hover: rgb(53, 54, 56);  /* neutral-bluish-800 */
+    --accent: rgb(103, 158, 254);           /* deepseek-400 */
+    --accent-tint: rgba(103, 158, 254, 0.14);
+    --error: rgb(242, 90, 90);              /* red-400 */
+    --code-bg: rgb(27, 27, 28);             /* neutral-bluish-900 */
+    --spinner-track: rgba(255, 255, 255, 0.12);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  /* 与 dsh 一致的系统字体栈(见 ui-theme base.css) */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: var(--label-primary);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+code {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
+    'Liberation Mono', Menlo, Courier, monospace;
+  font-size: 0.92em;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  gap: 16px;
+}
+
+.card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 40px 32px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.brand-logo {
+  width: 40px;
+  height: 40px;
+}
+
+.brand-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.brand-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-tint);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.view[hidden] {
+  display: none;
+}
+
+.view h2 {
+  margin: 14px 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.desc {
+  margin: 0 0 20px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--label-secondary);
+}
+
+/* 状态圆点(警告=未启动,错误=环境缺失/启动失败) */
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.status-dot--warn {
+  background: var(--warn);
+}
+
+.status-dot--error {
+  background: var(--error);
+}
+
+/* 加载圈:deepseek 蓝 */
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--spinner-track);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 断连/加载失败提示条 */
+.notice {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--warn);
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+.inline-error {
+  margin: -8px 0 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--error);
+}
+
+/* 按钮:主按钮沿用 dsh 的近黑填充,次按钮为白底描边 */
+.btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn--primary {
+  background: var(--btn-primary-fill);
+  color: var(--btn-primary-fg);
+}
+
+.btn--primary:not(:disabled):hover {
+  background: var(--btn-primary-hover);
+}
+
+.btn--secondary {
+  background: var(--btn-secondary-fill);
+  color: var(--label-primary);
+  border-color: var(--border);
+}
+
+.btn--secondary:not(:disabled):hover {
+  background: var(--btn-secondary-hover);
+}
+
+.btn--ghost {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--label-secondary);
+  border-color: var(--border);
+}
+
+.btn--ghost:not(:disabled):hover {
+  background: var(--btn-secondary-hover);
+  color: var(--label-primary);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* 安装命令行(dsh-missing 视图) */
+.command {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0 0 20px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.command-text {
+  flex: 1;
+  text-align: left;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+/* dsh 进程日志面板 */
+.log {
+  width: 100%;
+  max-height: 160px;
+  overflow: auto;
+  margin: 0 0 20px;
+  padding: 10px 12px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
+    'Liberation Mono', Menlo, Courier, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--label-secondary);
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.foot {
+  font-size: 12px;
+  color: var(--label-tertiary);
+}
+
+.foot code {
+  font-size: 11px;
+}

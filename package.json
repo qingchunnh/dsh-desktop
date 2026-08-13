@@ -1,0 +1,48 @@
+{
+  "name": "dsh-desktop",
+  "productName": "dsh-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "author": "qingchunnh",
+  "repository": "https://github.com/qingchunnh/dsh-desktop",
+  "description": "DeepSeek Harness 的桌面客户端，自动检测本机运行环境，启动并连接 dsh Web UI",
+  "main": "main/main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.dsh.desktop",
+    "productName": "dsh-desktop",
+    "files": [
+      "main/**",
+      "preload/**",
+      "renderer/**",
+      "assets/**",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": "zip"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
+    },
+    "npmRebuild": false
+  }
+}
