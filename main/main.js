@@ -50,6 +50,9 @@ function createWindow() {
     height: 720,
     minWidth: 840,
     minHeight: 560,
+    // 隐藏 Windows/Linux 的窗口菜单栏(File/Edit...),界面无菜单需求;
+    // 按 Alt 可临时唤出(开发时仍可用菜单里的 DevTools)。macOS 无窗口菜单,不受影响
+    autoHideMenuBar: true,
     icon, // Windows/Linux 的窗口与任务栏图标;macOS 的 Dock 图标在 whenReady 里设置
     // 与 dsh 浅色主题的模块底色一致,避免启动白闪
     backgroundColor: '#f5f6f7',
