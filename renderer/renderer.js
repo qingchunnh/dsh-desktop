@@ -20,7 +20,7 @@ if (!api) {
   const checking = document.querySelector('[data-view="checking"]')
   checking.querySelector('.spinner').hidden = true
   checking.querySelector('h2').textContent = '初始化失败'
-  checking.querySelector('.desc').textContent = '与主进程通信失败，请尝试重启应用。'
+    checking.querySelector('.desc').textContent = '与主进程通信失败，请尝试重启应用'
   throw new Error('dshDesktop API 未注入')
 }
 
@@ -70,7 +70,7 @@ function handleStatus(result) {
   if (result.status === 'online') return // 主进程已把窗口切到 Web UI,无需处理
   // 3080 有程序监听但不是 dsh,提示用户端口被占用(仅在落到未启动页时才有意义)
   if (result.portOccupied && result.status === 'ready') {
-    showNotice('检测到 127.0.0.1:3080 被其他程序占用，而非 dsh。请先释放该端口。')
+    showNotice('检测到 127.0.0.1:3080 被其他程序占用，而非 dsh。请先释放该端口')
   }
   if (result.status === 'ready') return show('offline')
   showEnvProblem(result.env)
@@ -144,7 +144,7 @@ async function handleRetry() {
     const result = await api.retryConnection()
     // 端口被其他程序占用时换成提示条,语义比普通连接失败更强
     if (!result.ok && result.occupied) {
-      showNotice('127.0.0.1:3080 被其他程序占用，而非 dsh。请先释放该端口。')
+      showNotice('127.0.0.1:3080 被其他程序占用，而非 dsh。请先释放该端口')
       return
     }
     if (!result.ok) errorEl.hidden = false
@@ -209,9 +209,9 @@ document.querySelectorAll('[data-action]').forEach(button => {
 // 主进程在「连接断开 / 加载失败」回到本页时会带上 reason query
 const reason = new URLSearchParams(location.search).get('reason')
 if (reason) {
-  showNotice(reason === 'disconnected'
-    ? '与 127.0.0.1:3080 的连接已断开，DeepSeek Harness 可能已停止。'
-    : '无法加载 127.0.0.1:3080 页面，请检查 dsh 状态。')
+    showNotice(reason === 'disconnected'
+      ? '与 127.0.0.1:3080 的连接已断开，DeepSeek Harness 可能已停止'
+      : '无法加载 127.0.0.1:3080 页面，请检查 dsh 状态')
 }
 
 show('checking')
