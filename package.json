@@ -19,6 +19,7 @@
   "build": {
     "appId": "com.dsh.desktop",
     "productName": "dsh-desktop",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "main/**",
       "preload/**",
@@ -35,7 +36,12 @@
       "category": "public.app-category.developer-tools"
     },
     "win": {
-      "target": "zip"
+      "target": [
+        {
+          "target": "zip",
+          "arch": ["x64"]
+        }
+      ]
     },
     "linux": {
       "target": [
