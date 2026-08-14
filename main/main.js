@@ -7,7 +7,7 @@
  *   3. 环境就绪则展示「未启动」页,用户可选择由桌面端代为 `dsh web`,或在终端
  *      手动启动后点击「重试连接」。
  */
-const { app, BrowserWindow, ipcMain, shell, nativeImage } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, nativeImage, screen } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
@@ -42,12 +42,25 @@ let onlinePollTimer = null
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
+/**
+ * 默认窗口尺寸:按主屏工作区比例计算并钳制在合理区间。
+ * 固定像素在 Windows 缩放下观感差异大(1080p@150% 逻辑分辨率仅 1280×720),
+ * 按比例取则小屏本不撑出屏幕、高分屏自动放大,各平台表现一致。
+ * (workAreaSize 返回的是 DIP,已含系统缩放;需在 app ready 后调用)
+ */
+function defaultWindowSize() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+  return {
+    width: Math.min(Math.max(Math.round(width * 0.62), 1120), 1440),
+    height: Math.min(Math.max(Math.round(height * 0.74), 720), 960),
+  }
+}
+
 function createWindow() {
   // 图标文件缺失时退回系统默认图标,不影响启动
   const icon = fs.existsSync(APP_ICON) ? nativeImage.createFromPath(APP_ICON) : undefined
   mainWindow = new BrowserWindow({
-    width: 1080,
-    height: 720,
+    ...defaultWindowSize(),
     minWidth: 840,
     minHeight: 560,
     // 隐藏 Windows/Linux 的窗口菜单栏(File/Edit...),界面无菜单需求;
