@@ -25,8 +25,7 @@
 
       <!-- dsh 未启动 -->
       <div class="view" data-view="offline" hidden>
-        <div class="status-dot status-dot--warn"></div>
-        <h2>检测到 DeepSeek Harness 未启动</h2>
+        <h2><span class="status-dot status-dot--warn"></span>检测到 DeepSeek Harness 未启动</h2>
         <p class="notice" data-role="offline-notice" hidden></p>
         <p class="desc">可以由桌面端代为运行 <code>dsh web</code>;<br>如果你已在终端手动启动，请点击「重试连接」。</p>
         <p class="inline-error" data-role="retry-error" hidden>仍然无法连接 <code>127.0.0.1:3080</code>，请确认 dsh 已正常启动。</p>
@@ -49,8 +48,7 @@
 
       <!-- dsh 启动失败 -->
       <div class="view" data-view="start-error" hidden>
-        <div class="status-dot status-dot--error"></div>
-        <h2>启动失败</h2>
+        <h2><span class="status-dot status-dot--error"></span>启动失败</h2>
         <p class="desc" data-role="start-error-text"></p>
         <pre class="log" data-role="start-error-log" hidden></pre>
         <div class="actions">
@@ -60,8 +58,7 @@
 
       <!-- 未安装 Node.js -->
       <div class="view" data-view="node-missing" hidden>
-        <div class="status-dot status-dot--error"></div>
-        <h2>未检测到 Node.js</h2>
+        <h2><span class="status-dot status-dot--error"></span>未检测到 Node.js</h2>
         <p class="desc">DeepSeek Harness 需要 Node.js <code>^22.19.0</code> 或 <code>&gt;=24.0.0</code>。<br>请先安装 Node.js，完成后点击「重新检测」。</p>
         <div class="actions">
           <button class="btn btn--primary" data-action="open-nodejs">前往官网下载</button>
@@ -71,8 +68,7 @@
 
       <!-- Node.js 版本过低 -->
       <div class="view" data-view="node-outdated" hidden>
-        <div class="status-dot status-dot--error"></div>
-        <h2>Node.js 版本过低</h2>
+        <h2><span class="status-dot status-dot--error"></span>Node.js 版本过低</h2>
         <p class="desc">当前版本 <code data-role="node-current"></code>，需要 <code>^22.19.0</code> 或 <code>&gt;=24.0.0</code>(23.x 不受支持)。<br>请升级 Node.js 后点击「重新检测」。</p>
         <div class="actions">
           <button class="btn btn--primary" data-action="open-nodejs">前往官网升级</button>
@@ -82,8 +78,7 @@
 
       <!-- 未安装 dsh -->
       <div class="view" data-view="dsh-missing" hidden>
-        <div class="status-dot status-dot--error"></div>
-        <h2>未检测到 DeepSeek Harness</h2>
+        <h2><span class="status-dot status-dot--error"></span>未检测到 DeepSeek Harness</h2>
         <p class="desc">请在终端中执行以下命令手动安装:</p>
         <div class="command">
           <code class="command-text">npm install -g @deepseek-ai/dsh</code>

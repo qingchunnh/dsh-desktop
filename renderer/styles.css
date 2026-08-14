@@ -143,11 +143,15 @@ code {
   color: var(--label-secondary);
 }
 
-/* 状态圆点(警告=未启动,错误=环境缺失/启动失败) */
+/* 状态圆点(警告=未启动,错误=环境缺失/启动失败),内联于视图标题前 */
 .status-dot {
-  width: 12px;
-  height: 12px;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
+  margin-right: 8px;
+  /* inline-block 默认底部对齐文字基线,略下移使圆心与中文视觉重心齐平 */
+  vertical-align: -1px;
 }
 
 .status-dot--warn {
