@@ -4,7 +4,7 @@
  * 桌面端不内置 dsh,这里启动的是用户本机已安装的 `dsh` 命令;
  * 若用户选择自己在终端启动,本模块不会被使用。
  */
-const { spawn } = require('node:child_process')
+const { spawn, spawnSync } = require('node:child_process')
 
 /** 日志尾部保留的最大字符数(长时间运行防止内存膨胀,启动失败时用于展示) */
 const LOG_TAIL_LIMIT = 64 * 1024
@@ -84,6 +84,8 @@ class DshRunner {
 
   /**
    * 停止 dsh;POSIX 杀整个进程组,Windows 用 taskkill 杀进程树。
+   * Windows 分支必须同步执行:应用退出(before-quit / process exit)时事件循环
+   * 即将关闭,异步 spawn 来不及完成会导致 dsh 进程残留(任务管理器可见)。
    * 注意:引用是立即释放的,若进程无视 SIGTERM 残留,本实例会失去它的句柄
    * (表现为 3080 仍被占用);下次启动会经指纹检测直接连上,属于预期的自愈行为。
    */
@@ -95,12 +97,13 @@ class DshRunner {
     this.child = null
     try {
       if (process.platform === 'win32') {
-        // taskkill 自身 spawn 失败时静默忽略;注意此时 dsh 进程可能残留
-        // (Windows 下子进程不随父进程退出),下次启动会经指纹检测直接连上。
-        // unref 避免这个临时子进程拖住退出流程
-        spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
-          .on('error', () => {})
-          .unref()
+        // 同步等待 taskkill 完成,保证返回时进程树已被终止;
+        // 失败(如进程已退出、pid 无效)时静默忽略,下次启动会经指纹检测直接连上。
+        // timeout 兜底:极端情况下 taskkill 挂起不至于卡死退出流程
+        spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+          stdio: 'ignore',
+          timeout: 5000,
+        })
       } else {
         process.kill(-child.pid, 'SIGTERM')
       }

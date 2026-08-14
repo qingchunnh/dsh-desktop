@@ -246,6 +246,13 @@ app.on('before-quit', () => {
   if (runner) runner.stop()
 })
 
+// 兜底:before-quit 覆盖不到的退出路径(如开发模式 Ctrl+C、关闭终端)。
+// exit 事件中只允许同步代码,runner.stop() 内部同步执行(taskkill 为 spawnSync),
+// 且幂等(before-quit 已清理过时 child 为 null,直接返回)
+process.on('exit', () => {
+  if (runner) runner.stop()
+})
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
