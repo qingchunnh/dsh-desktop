@@ -5,7 +5,7 @@
  * 往往不包含 nvm / Homebrew 等用户级 bin 目录,因此这里会通过用户的登录 shell
  * 提取 PATH 并缓存,供后续所有子进程(检测与启动 dsh)使用。
  */
-const { spawnSync } = require('node:child_process')
+const { spawn, spawnSync } = require('node:child_process')
 const fs = require('node:fs')
 const http = require('node:http')
 const net = require('node:net')
@@ -82,6 +82,42 @@ function run(command, args, options = {}) {
     timeout: 15000,
     shell: process.platform === 'win32',
     ...options,
+  })
+}
+
+/**
+ * run 的异步版本(检查更新链路专用):与 spawnSync 语义一致
+ * (永不抛错;超时杀进程并以 error 收场;返回 { error, status, stdout, stderr }),
+ * 但不阻塞主进程事件循环。检查更新最坏要跑满约 50 秒超时,
+ * 同步执行会把整个窗口卡成「未响应」,因此这条链路必须走异步。
+ */
+function runAsync(command, args, options = {}) {
+  const { timeout = 15000, ...rest } = options
+  return new Promise(resolve => {
+    const child = spawn(command, args, {
+      shell: process.platform === 'win32',
+      ...rest,
+    })
+    let stdout = ''
+    let stderr = ''
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      child.kill()
+    }, timeout)
+    child.stdout.setEncoding('utf8')
+    child.stderr.setEncoding('utf8')
+    child.stdout.on('data', chunk => { stdout += chunk })
+    child.stderr.on('data', chunk => { stderr += chunk })
+    // spawn 失败(命令不存在)走 error,此后 close 仍会触发;resolve 幂等,先到先生效
+    child.on('error', error => {
+      clearTimeout(timer)
+      resolve({ error, status: null, stdout, stderr })
+    })
+    child.on('close', status => {
+      clearTimeout(timer)
+      resolve({ error: timedOut ? new Error(`命令执行超时(${timeout}ms)`) : null, status, stdout, stderr })
+    })
   })
 }
 
@@ -208,6 +244,23 @@ function checkDsh(env) {
 }
 
 /**
+ * checkDsh 的异步版本(检查更新链路专用),逻辑与同步版一致,仅把 run 换成 runAsync。
+ * @returns {Promise<{ installed: boolean, version: string | null }>}
+ */
+async function checkDshAsync(env) {
+  try {
+    const result = await runAsync('dsh', ['-V'], { env, timeout: 30000 })
+    if (result.error || result.status !== 0) {
+      return { installed: false, version: null }
+    }
+    const version = parseVersion(result.stdout)
+    return { installed: true, version: version ? version.raw : (result.stdout || '').trim() }
+  } catch {
+    return { installed: false, version: null }
+  }
+}
+
+/**
  * 完整环境检测:先 node 后 dsh。
  * node 缺失或版本不满足时 dsh 必然无法运行,直接跳过 dsh 检测以节省时间。
  */
@@ -221,13 +274,13 @@ function checkEnvironment() {
 }
 
 /**
- * 查询 npm registry 上 dsh 的最新版本号。
+ * 查询 npm registry 上 dsh 的最新版本号(仅检查更新链路调用,异步执行)。
  * 走 `npm view` 而非直连 registry.npmjs.org:跟随用户自己配置的
  * registry(国内用户常配 npmmirror 镜像);断网/超时等失败返回 null。
  */
-function checkLatestDshVersion(env) {
+async function checkLatestDshVersion(env) {
   try {
-    const result = run('npm', ['view', '@deepseek-ai/dsh', 'version'], { env, timeout: 20000 })
+    const result = await runAsync('npm', ['view', '@deepseek-ai/dsh', 'version'], { env, timeout: 20000 })
     if (result.error || result.status !== 0) return null
     const version = parseVersion(result.stdout)
     return version ? version.raw : null
@@ -276,14 +329,15 @@ function isVersionOlder(a, b) {
 
 /**
  * 检查 dsh 更新(由用户在启动器页手动触发):本地 `dsh -V` 对比 registry 最新版本。
- * @returns {{ installed: boolean, current?: string | null, latest?: string, updateAvailable?: boolean, error?: boolean }}
+ * 全程异步,不阻塞主进程事件循环;ipcMain.handle 会原样透传 Promise 结果,调用方无需改动。
+ * @returns {Promise<{ installed: boolean, current?: string | null, latest?: string, updateAvailable?: boolean, error?: boolean }>}
  *   installed=false:未安装 dsh;error=true:已安装但查询 registry 失败(多为网络问题)
  */
-function checkDshUpdate() {
+async function checkDshUpdate() {
   const env = getEnhancedEnv()
-  const local = checkDsh(env)
+  const local = await checkDshAsync(env)
   if (!local.installed) return { installed: false }
-  const latest = checkLatestDshVersion(env)
+  const latest = await checkLatestDshVersion(env)
   if (!latest) return { installed: true, current: local.version, error: true }
   const current = local.version ? parseVersion(local.version) : null
   return {
