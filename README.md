@@ -1,13 +1,13 @@
 # dsh-desktop
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(以下简称 dsh)的桌面端启动器，基于 Electron。
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(以下简称 dsh)的桌面客户端，基于 Electron。
 
 不内置 dsh，需先在本机安装(见[环境要求](#环境要求))。启动后自动检测 `127.0.0.1:3080` 上的 dsh Web UI:
 
 - 服务在线 → 直接进入
 - 未启动 → 一键代为运行 `dsh web`，或在终端手动启动后重试连接
 
-> 本项目为社区维护的第三方启动器，非 DeepSeek 官方出品。
+> 本项目为社区维护的第三方桌面客户端，非 DeepSeek 官方出品。
 
 ## 功能特性
 
