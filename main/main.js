@@ -252,13 +252,26 @@ ipcMain.handle('open-external', (_event, url) => {
 
 // ---- 应用生命周期 ----
 
-app.whenReady().then(() => {
-  // macOS 开发模式下 Dock 默认显示 Electron 图标,需单独设置为应用图标
-  if (process.platform === 'darwin' && fs.existsSync(APP_ICON)) {
-    app.dock.setIcon(nativeImage.createFromPath(APP_ICON))
-  }
-  createWindow()
-})
+// 单实例锁:已有实例在运行时,后启动的进程直接退出,由首实例聚焦已有窗口。
+// 双开会导致两个启动器各自管理 dsh 进程与在线轮询,退出时互相干扰,必须阻止
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+
+  app.whenReady().then(() => {
+    // macOS 开发模式下 Dock 默认显示 Electron 图标,需单独设置为应用图标
+    if (process.platform === 'darwin' && fs.existsSync(APP_ICON)) {
+      app.dock.setIcon(nativeImage.createFromPath(APP_ICON))
+    }
+    createWindow()
+  })
+}
 
 // 退出前清理:只回收由桌面端启动的 dsh 进程,用户在终端手动启动的不受影响
 app.on('before-quit', () => {
