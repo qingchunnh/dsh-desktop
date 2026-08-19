@@ -198,7 +198,25 @@ function setUpdateState(state) {
   role('update-available').hidden = state !== 'available'
 }
 
-/** 以单行文本收场(已是最新 / 检查失败 / 未安装) */
+/**
+ * 渲染含版本号的文案:字符串原样拼接,{ version } 渲染为主题蓝色高亮。
+ * 版本号来自外部命令输出(可能未过版本正则),一律走 textContent,不拼 HTML。
+ */
+function renderVersionText(el, parts) {
+  el.textContent = ''
+  for (const part of parts) {
+    if (typeof part === 'string') {
+      el.appendChild(document.createTextNode(part))
+      continue
+    }
+    const span = document.createElement('span')
+    span.className = 'update-version'
+    span.textContent = part.version
+    el.appendChild(span)
+  }
+}
+
+/** 以单行文本收场(检查失败 / 未安装) */
 function setUpdateMessage(text) {
   role('update-message').textContent = text
   setUpdateState('message')
@@ -217,12 +235,18 @@ async function handleCheckUpdate() {
     } else if (result.error) {
       setUpdateMessage('检查失败，请检查网络连接后重试')
     } else if (result.updateAvailable) {
-      role('update-available-text').textContent = result.current
-        ? `发现新版本 ${result.latest}（当前版本 ${result.current}）`
-        : `发现新版本 ${result.latest}`
+      renderVersionText(role('update-available-text'), result.current
+        ? ['发现新版本 ', { version: result.latest }, '（当前版本 ', { version: result.current }, '）']
+        : ['发现新版本 ', { version: result.latest }])
       setUpdateState('available')
     } else {
-      setUpdateMessage(`当前已是最新版本${result.current ? `（${result.current}）` : ''}`)
+      const message = role('update-message')
+      if (result.current) {
+        renderVersionText(message, ['当前已是最新版本（', { version: result.current }, '）'])
+      } else {
+        message.textContent = '当前已是最新版本'
+      }
+      setUpdateState('message')
     }
   } catch {
     // IPC 层面的异常(主进程 handler 抛错),按检查失败处理

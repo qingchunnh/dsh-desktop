@@ -367,6 +367,11 @@ code {
   margin: 0;
 }
 
+/* 更新面板中的版本号:主题蓝色(--accent,跟随深浅色),提高辨识度 */
+.update-version {
+  color: var(--accent);
+}
+
 .update-panel .command {
   margin: 10px 0 8px;
   padding: 8px 10px;
