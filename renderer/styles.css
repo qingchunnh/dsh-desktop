@@ -309,3 +309,90 @@ code {
 .foot code {
   font-size: 11px;
 }
+
+/* footer 内的文字型按钮(检查更新),视觉上与周围文字齐平 */
+.link-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-btn:not(:disabled):hover {
+  color: var(--label-primary);
+}
+
+.link-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* 更新检查结果面板(「检查更新」触发),与主卡片同宽 */
+.update-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--label-secondary);
+}
+
+.update-checking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* display:flex 会覆盖 hidden 的 UA 样式,需显式补回 */
+.update-checking[hidden] {
+  display: none;
+}
+
+.spinner--small {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
+.update-message {
+  margin: 0;
+}
+
+.update-panel .command {
+  margin: 10px 0 8px;
+  padding: 8px 10px;
+}
+
+.update-hint {
+  margin: 0;
+  color: var(--label-tertiary);
+}
+
+.update-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  appearance: none;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--label-tertiary);
+  cursor: pointer;
+}
+
+.update-close:hover {
+  background: var(--btn-secondary-hover);
+  color: var(--label-primary);
+}

@@ -150,14 +150,20 @@ function refreshEnhancedEnv() {
 }
 
 /**
- * 解析 `v22.19.0` / `22.19.0` 形式的版本号。
- * @returns {{ major: number, minor: number, patch: number, raw: string } | null}
+ * 解析 `v22.19.0` / `22.19.0` / `0.1.0-rc.8` 形式的版本号(可含预发布号)。
+ * @returns {{ major: number, minor: number, patch: number, prerelease: string, raw: string } | null}
  */
 function parseVersion(text) {
-  const match = /v?(\d+)\.(\d+)\.(\d+)/.exec(text || '')
+  const match = /v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/.exec(text || '')
   if (!match) return null
-  const [, major, minor, patch] = match
-  return { major: +major, minor: +minor, patch: +patch, raw: `${+major}.${+minor}.${+patch}` }
+  const [, major, minor, patch, prerelease] = match
+  return {
+    major: +major,
+    minor: +minor,
+    patch: +patch,
+    prerelease: prerelease || '',
+    raw: `${+major}.${+minor}.${+patch}${prerelease ? `-${prerelease}` : ''}`,
+  }
 }
 
 /** 校验 Node.js 版本是否满足 `^22.19.0 || >=24.0.0`(注意 23.x 不受支持) */
@@ -214,6 +220,80 @@ function checkEnvironment() {
   return { node, dsh, ok: node.installed && node.ok && dsh.installed }
 }
 
+/**
+ * 查询 npm registry 上 dsh 的最新版本号。
+ * 走 `npm view` 而非直连 registry.npmjs.org:跟随用户自己配置的
+ * registry(国内用户常配 npmmirror 镜像);断网/超时等失败返回 null。
+ */
+function checkLatestDshVersion(env) {
+  try {
+    const result = run('npm', ['view', '@deepseek-ai/dsh', 'version'], { env, timeout: 20000 })
+    if (result.error || result.status !== 0) return null
+    const version = parseVersion(result.stdout)
+    return version ? version.raw : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 比较预发布号(semver §11):无预发布号者优先级更高(0.1.0 > 0.1.0-rc.8);
+ * 双方都有时逐段比较,数字段按数值且小于字母段,段数多者更大。
+ * @returns {number} a < b 返回负数,相等返回 0
+ */
+function comparePrerelease(a, b) {
+  if (!a && !b) return 0
+  if (!a) return 1
+  if (!b) return -1
+  const as = a.split('.')
+  const bs = b.split('.')
+  for (let i = 0; i < Math.max(as.length, bs.length); i += 1) {
+    if (i >= as.length) return -1
+    if (i >= bs.length) return 1
+    const na = /^\d+$/.test(as[i]) ? Number(as[i]) : null
+    const nb = /^\d+$/.test(bs[i]) ? Number(bs[i]) : null
+    if (na !== null && nb !== null) {
+      if (na !== nb) return na < nb ? -1 : 1
+    } else if (na !== null) {
+      return -1
+    } else if (nb !== null) {
+      return 1
+    } else if (as[i] !== bs[i]) {
+      return as[i] < bs[i] ? -1 : 1
+    }
+  }
+  return 0
+}
+
+/** 判断版本 a 是否落后于 b(含预发布号比较:0.1.0-rc.8 < 0.1.0-rc.9 < 0.1.0) */
+function isVersionOlder(a, b) {
+  if (!a || !b) return false
+  for (const key of ['major', 'minor', 'patch']) {
+    if (a[key] !== b[key]) return a[key] < b[key]
+  }
+  return comparePrerelease(a.prerelease, b.prerelease) < 0
+}
+
+/**
+ * 检查 dsh 更新(由用户在启动器页手动触发):本地 `dsh -V` 对比 registry 最新版本。
+ * @returns {{ installed: boolean, current?: string | null, latest?: string, updateAvailable?: boolean, error?: boolean }}
+ *   installed=false:未安装 dsh;error=true:已安装但查询 registry 失败(多为网络问题)
+ */
+function checkDshUpdate() {
+  const env = getEnhancedEnv()
+  const local = checkDsh(env)
+  if (!local.installed) return { installed: false }
+  const latest = checkLatestDshVersion(env)
+  if (!latest) return { installed: true, current: local.version, error: true }
+  const current = local.version ? parseVersion(local.version) : null
+  return {
+    installed: true,
+    current: local.version,
+    latest,
+    updateAvailable: isVersionOlder(current, parseVersion(latest)),
+  }
+}
+
 module.exports = {
   DSH_HOST,
   DSH_PORT,
@@ -222,4 +302,5 @@ module.exports = {
   getEnhancedEnv,
   refreshEnhancedEnv,
   checkEnvironment,
+  checkDshUpdate,
 }

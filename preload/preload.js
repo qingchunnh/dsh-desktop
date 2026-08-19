@@ -20,6 +20,8 @@ if (location.protocol === 'file:' && location.pathname.endsWith('/renderer/index
     startDsh: () => ipcRenderer.invoke('start-dsh'),
     /** 取消进行中的启动 */
     cancelStart: () => ipcRenderer.invoke('cancel-start'),
+    /** 手动检查 dsh 更新:返回本地版本、最新版本与是否有更新 */
+    checkUpdate: () => ipcRenderer.invoke('check-update'),
     /** 用系统浏览器打开链接 */
     openExternal: url => ipcRenderer.invoke('open-external', url),
     /** 订阅 dsh 进程日志;返回取消订阅函数 */

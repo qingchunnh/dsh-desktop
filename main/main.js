@@ -19,6 +19,7 @@ const {
   isDshRunning,
   getEnhancedEnv,
   refreshEnhancedEnv,
+  checkDshUpdate,
 } = require('./checks')
 const { DshRunner } = require('./runner')
 
@@ -238,6 +239,9 @@ ipcMain.handle('cancel-start', () => {
   if (runner) runner.stop()
   return true
 })
+
+/** 手动检查 dsh 更新(启动器页「检查更新」触发):本地版本对比 npm registry 最新版本 */
+ipcMain.handle('check-update', () => checkDshUpdate())
 
 /** 用系统浏览器打开链接(仅允许 https,防止被滥用) */
 ipcMain.handle('open-external', (_event, url) => {

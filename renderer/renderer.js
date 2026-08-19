@@ -4,13 +4,14 @@
  * 视图清单:data-view = checking / offline / starting / start-error /
  * node-missing / node-outdated / dsh-missing
  * (连接成功后主进程会把整个窗口切换到 http://127.0.0.1:3080,本页即被替换)
+ *
+ * 视图之外还有一个独立的更新结果面板(data-role="update-panel"),
+ * 由 footer 的「检查更新」触发,叠加展示在卡片下方,不影响当前视图。
  */
 'use strict'
 
 /** Node.js 官网下载地址(未安装 / 版本过低时引导) */
 const NODE_DOWNLOAD_URL = 'https://nodejs.org/zh-cn/download'
-/** dsh 的手动安装命令(dsh-missing 视图展示并供复制) */
-const DSH_INSTALL_COMMAND = 'npm install -g @deepseek-ai/dsh'
 
 const api = window.dshDesktop
 
@@ -165,14 +166,17 @@ async function handleRecheck() {
   }
 }
 
-/** 复制 dsh 安装命令,并在按钮上给出短暂反馈 */
-async function handleCopyInstall(button) {
+/** 复制命令行文本(安装/更新命令共用),并在按钮上给出短暂反馈 */
+async function handleCopyCommand(button) {
+  const row = button.closest('.command')
+  const textEl = row && row.querySelector('.command-text')
+  if (!textEl) return
   try {
-    await navigator.clipboard.writeText(DSH_INSTALL_COMMAND)
+    await navigator.clipboard.writeText(textEl.textContent)
   } catch {
     // 剪贴板不可用时退化为选中文本,方便用户手动复制
     const range = document.createRange()
-    range.selectNodeContents(document.querySelector('.command-text'))
+    range.selectNodeContents(textEl)
     const selection = window.getSelection()
     selection.removeAllRanges()
     selection.addRange(range)
@@ -185,6 +189,49 @@ async function handleCopyInstall(button) {
   }, 1500)
 }
 
+// ---- 检查更新 ----
+
+/** 切换更新面板的三态:checking(转圈)/ message(单行文本)/ available(新版本+更新命令) */
+function setUpdateState(state) {
+  role('update-checking').hidden = state !== 'checking'
+  role('update-message').hidden = state !== 'message'
+  role('update-available').hidden = state !== 'available'
+}
+
+/** 以单行文本收场(已是最新 / 检查失败 / 未安装) */
+function setUpdateMessage(text) {
+  role('update-message').textContent = text
+  setUpdateState('message')
+}
+
+/** 检查更新:结果渲染在卡片下方的独立面板,不打断当前视图 */
+async function handleCheckUpdate() {
+  const button = role('update-btn')
+  button.disabled = true
+  role('update-panel').hidden = false
+  setUpdateState('checking')
+  try {
+    const result = await api.checkUpdate()
+    if (!result || !result.installed) {
+      setUpdateMessage('尚未安装 DeepSeek Harness，请先按上方指引完成安装')
+    } else if (result.error) {
+      setUpdateMessage('检查失败，请检查网络连接后重试')
+    } else if (result.updateAvailable) {
+      role('update-available-text').textContent = result.current
+        ? `发现新版本 ${result.latest}（当前版本 ${result.current}）`
+        : `发现新版本 ${result.latest}`
+      setUpdateState('available')
+    } else {
+      setUpdateMessage(`当前已是最新版本${result.current ? `（${result.current}）` : ''}`)
+    }
+  } catch {
+    // IPC 层面的异常(主进程 handler 抛错),按检查失败处理
+    setUpdateMessage('检查失败，请检查网络连接后重试')
+  } finally {
+    button.disabled = false
+  }
+}
+
 // ---- 事件绑定 ----
 
 const actions = {
@@ -194,7 +241,11 @@ const actions = {
   'cancel-start': () => api.cancelStart(),
   'back-offline': () => show('offline'),
   'open-nodejs': () => api.openExternal(NODE_DOWNLOAD_URL),
-  'copy-install': (_event, button) => handleCopyInstall(button),
+  'copy-command': (_event, button) => handleCopyCommand(button),
+  'check-update': () => guard(handleCheckUpdate),
+  'dismiss-update': () => {
+    role('update-panel').hidden = true
+  },
 }
 
 document.querySelectorAll('[data-action]').forEach(button => {

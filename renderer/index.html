@@ -82,7 +82,7 @@
         <p class="desc">请在终端中执行以下命令手动安装：</p>
         <div class="command">
           <code class="command-text">npm install -g @deepseek-ai/dsh</code>
-          <button class="btn btn--ghost" data-action="copy-install">复制</button>
+          <button class="btn btn--ghost" data-action="copy-command">复制</button>
         </div>
         <div class="actions">
           <button class="btn btn--primary" data-action="recheck">重新检测</button>
@@ -90,7 +90,25 @@
       </div>
     </section>
 
-    <footer class="foot">dsh-desktop · 连接 <code>127.0.0.1:3080</code></footer>
+    <!-- 更新检查结果(footer「检查更新」触发):三种状态互斥展示 -->
+    <section class="update-panel" data-role="update-panel" hidden>
+      <div class="update-checking" data-role="update-checking" hidden>
+        <span class="spinner spinner--small" role="status" aria-label="检查中"></span>
+        <span>正在检查更新…</span>
+      </div>
+      <p class="update-message" data-role="update-message" hidden></p>
+      <div data-role="update-available" hidden>
+        <p class="update-message" data-role="update-available-text"></p>
+        <div class="command">
+          <code class="command-text">npm install -g @deepseek-ai/dsh@latest</code>
+          <button class="btn btn--ghost" data-action="copy-command">复制</button>
+        </div>
+        <p class="update-hint">在终端执行以上命令完成更新，更新后需重启 dsh 生效</p>
+      </div>
+      <button class="update-close" data-action="dismiss-update" aria-label="关闭">×</button>
+    </section>
+
+    <footer class="foot">dsh-desktop · 连接 <code>127.0.0.1:3080</code> · <button class="link-btn" data-action="check-update" data-role="update-btn">检查更新</button></footer>
   </main>
   <script src="renderer.js"></script>
 </body>
