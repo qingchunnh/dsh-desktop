@@ -6,7 +6,7 @@
  * (连接成功后主进程会把整个窗口切换到 http://127.0.0.1:3080,本页即被替换)
  *
  * 视图之外还有一个独立的更新结果面板(data-role="update-panel"),
- * 由 footer 的「检查更新」触发,叠加展示在卡片下方,不影响当前视图。
+ * 由 footer 的「检查 dsh 更新」触发,叠加展示在卡片下方,不影响当前视图。
  */
 'use strict'
 
@@ -65,10 +65,27 @@ function showEnvProblem(env) {
   show('offline')
 }
 
+/** 最近一次环境检测的 dsh 安装状态(footer「检查 dsh 更新」按钮的禁用依据) */
+let dshInstalled = false
+
+/** 更新 footer 的 dsh 版本号,并按安装状态禁用/启用「检查 dsh 更新」按钮 */
+function renderDshVersion(env) {
+  dshInstalled = Boolean(env && env.dsh.installed)
+  role('update-btn').disabled = !dshInstalled
+  const version = dshInstalled ? env.dsh.version : null
+  if (!version) {
+    role('dsh-version').textContent = '未安装 dsh'
+    return
+  }
+  // 解析失败时 version 是 `dsh -V` 的原始输出,可能自带 v 前缀,避免重复拼接
+  role('dsh-version').textContent = `dsh ${version.startsWith('v') ? version : `v${version}`}`
+}
+
 /** 处理 bootstrap / recheck-env 的返回结果 */
 function handleStatus(result) {
   if (!result) return showEnvProblem(null)
   if (result.status === 'online') return // 主进程已把窗口切到 Web UI,无需处理
+  renderDshVersion(result.env)
   // 3080 有程序监听但不是 dsh,提示用户端口被占用(仅在落到未启动页时才有意义)
   if (result.portOccupied && result.status === 'ready') {
     showNotice('检测到 127.0.0.1:3080 被其他程序占用，而非 dsh。请先释放该端口')
@@ -252,7 +269,8 @@ async function handleCheckUpdate() {
     // IPC 层面的异常(主进程 handler 抛错),按检查失败处理
     setUpdateMessage('检查失败，请检查网络连接后重试')
   } finally {
-    button.disabled = false
+    // 恢复按钮时跟随 dsh 安装状态:未安装保持禁用,不能无条件恢复为可点
+    button.disabled = !dshInstalled
   }
 }
 
@@ -280,6 +298,11 @@ document.querySelectorAll('[data-action]').forEach(button => {
 })
 
 // ---- 入口:展示断连提示(如有),然后开始引导流程 ----
+
+// footer 应用名后填充桌面端自身版本号
+api.getAppVersion().then(version => {
+  role('app-version').textContent = `v${version}`
+})
 
 // 主进程在「连接断开 / 加载失败」回到本页时会带上 reason query
 const reason = new URLSearchParams(location.search).get('reason')

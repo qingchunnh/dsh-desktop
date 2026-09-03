@@ -240,8 +240,11 @@ ipcMain.handle('cancel-start', () => {
   return true
 })
 
-/** 手动检查 dsh 更新(启动器页「检查更新」触发):本地版本对比 npm registry 最新版本 */
+/** 手动检查 dsh 更新(启动器页「检查 dsh 更新」触发):本地版本对比 npm registry 最新版本 */
 ipcMain.handle('check-update', () => checkDshUpdate())
+
+/** 桌面端自身版本号(footer 展示用),取自 package.json */
+ipcMain.handle('get-app-version', () => app.getVersion())
 
 /** 用系统浏览器打开链接(仅允许 https,防止被滥用) */
 ipcMain.handle('open-external', (_event, url) => {

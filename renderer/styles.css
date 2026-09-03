@@ -306,11 +306,7 @@ code {
   color: var(--label-tertiary);
 }
 
-.foot code {
-  font-size: 11px;
-}
-
-/* footer 内的文字型按钮(检查更新),视觉上与周围文字齐平 */
+/* footer 内的文字型按钮(检查 dsh 更新),视觉上与周围文字齐平 */
 .link-btn {
   appearance: none;
   border: none;
@@ -332,7 +328,7 @@ code {
   opacity: 0.6;
 }
 
-/* 更新检查结果面板(「检查更新」触发),与主卡片同宽 */
+/* 更新检查结果面板(「检查 dsh 更新」触发),与主卡片同宽 */
 .update-panel {
   position: relative;
   width: 100%;

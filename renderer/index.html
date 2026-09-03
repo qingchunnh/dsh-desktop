@@ -90,7 +90,7 @@
       </div>
     </section>
 
-    <!-- 更新检查结果(footer「检查更新」触发):三种状态互斥展示 -->
+    <!-- 更新检查结果(footer「检查 dsh 更新」触发):三种状态互斥展示 -->
     <section class="update-panel" data-role="update-panel" hidden>
       <div class="update-checking" data-role="update-checking" hidden>
         <span class="spinner spinner--small" role="status" aria-label="检查中"></span>
@@ -108,7 +108,7 @@
       <button class="update-close" data-action="dismiss-update" aria-label="关闭">×</button>
     </section>
 
-    <footer class="foot">dsh-desktop · 连接 <code>127.0.0.1:3080</code> · <button class="link-btn" data-action="check-update" data-role="update-btn">检查更新</button></footer>
+    <footer class="foot">dsh-desktop <span data-role="app-version"></span> · <span data-role="dsh-version"></span> · <button class="link-btn" data-action="check-update" data-role="update-btn" disabled>检查 dsh 更新</button></footer>
   </main>
   <script src="renderer.js"></script>
 </body>
