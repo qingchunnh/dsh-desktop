@@ -88,12 +88,12 @@ function createWindow() {
   mainWindow.webContents.on('will-navigate', (event, url) => {
     if (url.startsWith(DSH_URL) || url.startsWith(LAUNCHER_URL)) return
     event.preventDefault()
-    if (url.startsWith('https://')) shell.openExternal(url)
+    openExternalHttp(url)
   })
 
-  // 拒绝一切新窗口(target=_blank / window.open),https 链接同样交给系统浏览器
+  // 拒绝一切新窗口(target=_blank / window.open),http/https 链接同样交给系统浏览器
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) shell.openExternal(url)
+    openExternalHttp(url)
     return { action: 'deny' }
   })
 
@@ -246,12 +246,17 @@ ipcMain.handle('check-update', () => checkDshUpdate())
 /** 桌面端自身版本号(footer 展示用),取自 package.json */
 ipcMain.handle('get-app-version', () => app.getVersion())
 
-/** 用系统浏览器打开链接(仅允许 https,防止被滥用) */
-ipcMain.handle('open-external', (_event, url) => {
-  if (typeof url === 'string' && url.startsWith('https://')) {
-    shell.openExternal(url)
-  }
-})
+/**
+ * 把 http/https 链接交给系统浏览器打开,其余协议一律拦截。
+ * dsh 界面里的模型输出可能包含 http 链接(如本地起的服务),一并放行;
+ * file://、javascript: 等协议仍被拒绝,避免渲染层借此外跳。
+ */
+function openExternalHttp(url) {
+  if (typeof url === 'string' && /^https?:\/\//.test(url)) shell.openExternal(url)
+}
+
+/** 用系统浏览器打开链接(http/https) */
+ipcMain.handle('open-external', (_event, url) => openExternalHttp(url))
 
 // ---- 应用生命周期 ----
 
