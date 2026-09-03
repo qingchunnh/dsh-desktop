@@ -48,7 +48,8 @@ class DshRunner {
     this.logTail = ''
 
     const isWin = process.platform === 'win32'
-    const child = spawn('dsh', ['web'], {
+    // --no-open:Web UI 由桌面窗口加载,无需 dsh 打开系统浏览器
+    const child = spawn('dsh', ['web', '--no-open'], {
       env,
       shell: isWin, // Windows 下 dsh 是 .cmd shim,必须经 shell 执行
       detached: !isWin, // POSIX 下独立成进程组,便于退出时整组清理
