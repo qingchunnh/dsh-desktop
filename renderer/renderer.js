@@ -13,6 +13,9 @@
 /** Node.js 官网下载地址(未安装 / 版本过低时引导) */
 const NODE_DOWNLOAD_URL = 'https://nodejs.org/zh-cn/download'
 
+/** 桌面端源码仓库地址(footer 应用名点击跳转) */
+const REPO_URL = 'https://github.com/qingchunnh/dsh-desktop'
+
 const api = window.dshDesktop
 
 // preload 注入失败(如打包路径异常)时无法与主进程通信,
@@ -293,6 +296,7 @@ const actions = {
   'cancel-start': () => api.cancelStart(),
   'back-offline': () => show('offline'),
   'open-nodejs': () => api.openExternal(NODE_DOWNLOAD_URL),
+  'open-repo': () => api.openExternal(REPO_URL),
   'copy-command': (_event, button) => handleCopyCommand(button),
   'check-update': () => guard(handleCheckUpdate),
   'dismiss-update': () => {

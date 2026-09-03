@@ -328,6 +328,11 @@ code {
   opacity: 0.6;
 }
 
+/* footer 应用名变体:去下划线,作为应用标识而非操作入口,hover 仅变色提示可点 */
+.link-btn--plain {
+  text-decoration: none;
+}
+
 /* 更新检查结果面板(「检查 dsh 更新」触发),与主卡片同宽 */
 .update-panel {
   position: relative;
