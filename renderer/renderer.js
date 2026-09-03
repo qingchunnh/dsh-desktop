@@ -243,6 +243,12 @@ function setUpdateMessage(text) {
 async function handleCheckUpdate() {
   const button = role('update-btn')
   button.disabled = true
+  // 检查期间禁用卡片内的操作按钮(启动/重试连接/返回等):
+  // busy 守卫会阻止并发操作,此处显式置灰使禁用状态可见
+  const cardButtons = document.querySelectorAll('.card [data-action]')
+  cardButtons.forEach(item => {
+    item.disabled = true
+  })
   role('update-panel').hidden = false
   setUpdateState('checking')
   try {
@@ -269,6 +275,10 @@ async function handleCheckUpdate() {
     // IPC 层面的异常(主进程 handler 抛错),按检查失败处理
     setUpdateMessage('检查失败，请检查网络连接后重试')
   } finally {
+    // 卡片按钮此前没有其他禁用来源,统一恢复为可点
+    cardButtons.forEach(item => {
+      item.disabled = false
+    })
     // 恢复按钮时跟随 dsh 安装状态:未安装保持禁用,不能无条件恢复为可点
     button.disabled = !dshInstalled
   }
