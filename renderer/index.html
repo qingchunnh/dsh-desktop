@@ -108,7 +108,8 @@
       <button class="update-close" data-action="dismiss-update" aria-label="关闭">×</button>
     </section>
 
-    <footer class="foot"><button class="link-btn link-btn--plain" data-action="open-repo">dsh-desktop <span data-role="app-version"></span></button> · <span data-role="dsh-version"></span> · <button class="link-btn" data-action="check-update" data-role="update-btn" disabled>检查 dsh 更新</button></footer>
+    <!-- footer 默认隐藏:等 dsh 版本检测完在 renderDshVersion 中一并展示,避免出现空版本号夹心 -->
+    <footer class="foot" data-role="foot" hidden><button class="link-btn link-btn--plain" data-action="open-repo">dsh-desktop <span data-role="app-version"></span></button> · <span data-role="dsh-version"></span> · <button class="link-btn" data-action="check-update" data-role="update-btn" disabled>检查 dsh 更新</button></footer>
   </main>
   <script src="renderer.js"></script>
 </body>

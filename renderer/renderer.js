@@ -71,22 +71,27 @@ function showEnvProblem(env) {
 /** 最近一次环境检测的 dsh 安装状态(footer「检查 dsh 更新」按钮的禁用依据) */
 let dshInstalled = false
 
-/** 更新 footer 的 dsh 版本号,并按安装状态禁用/启用「检查 dsh 更新」按钮 */
+/** 更新 footer 的 dsh 版本号,并按安装状态禁用/启用「检查 dsh 更新」按钮;内容就绪后展示 footer */
 function renderDshVersion(env) {
   dshInstalled = Boolean(env && env.dsh.installed)
   role('update-btn').disabled = !dshInstalled
   const version = dshInstalled ? env.dsh.version : null
   if (!version) {
     role('dsh-version').textContent = '未安装 dsh'
-    return
+  } else {
+    // 解析失败时 version 是 `dsh -V` 的原始输出,可能自带 v 前缀,避免重复拼接
+    role('dsh-version').textContent = `dsh ${version.startsWith('v') ? version : `v${version}`}`
   }
-  // 解析失败时 version 是 `dsh -V` 的原始输出,可能自带 v 前缀,避免重复拼接
-  role('dsh-version').textContent = `dsh ${version.startsWith('v') ? version : `v${version}`}`
+  role('foot').hidden = false
 }
 
 /** 处理 bootstrap / recheck-env 的返回结果 */
 function handleStatus(result) {
-  if (!result) return showEnvProblem(null)
+  // IPC 返回空(防御分支):footer 按「未安装 dsh」收场,问题视图交给 showEnvProblem
+  if (!result) {
+    renderDshVersion(null)
+    return showEnvProblem(null)
+  }
   if (result.status === 'online') return // 主进程已把窗口切到 Web UI,无需处理
   renderDshVersion(result.env)
   // 3080 有程序监听但不是 dsh,提示用户端口被占用(仅在落到未启动页时才有意义)
@@ -181,7 +186,8 @@ async function handleRecheck() {
   try {
     handleStatus(await api.recheckEnv())
   } catch {
-    // IPC 异常时落到未启动页,用户可继续重试
+    // IPC 异常时落到未启动页,用户可继续重试;footer 按「未安装 dsh」收场
+    renderDshVersion(null)
     show('offline')
   }
 }
@@ -327,5 +333,8 @@ if (reason) {
 }
 
 show('checking')
-// IPC 异常时落到未启动页,避免永远停在转圈界面
-api.bootstrap().then(handleStatus).catch(() => show('offline'))
+// IPC 异常时落到未启动页,避免永远停在转圈界面;footer 按「未安装 dsh」收场
+api.bootstrap().then(handleStatus).catch(() => {
+  renderDshVersion(null)
+  show('offline')
+})
