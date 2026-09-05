@@ -29,6 +29,14 @@
         <p class="notice" data-role="offline-notice" hidden></p>
         <p class="desc">可以由桌面端代为运行 <code>dsh web</code><br>如果你已在终端手动启动，请点击「重试连接」</p>
         <p class="inline-error" data-role="retry-error" hidden>仍然无法连接 <code>127.0.0.1:3080</code>，请确认 dsh 已正常启动</p>
+        <div class="token-connect" data-role="token-connect" hidden>
+          <p class="desc">终端启动的 dsh ≥ 0.1.2 需要启动令牌才能连接。<br>请粘贴终端中输出的完整访问地址：</p>
+          <div class="token-input-row">
+            <input type="text" data-role="token-url" placeholder="http://127.0.0.1:3080/?token=…" spellcheck="false" autocomplete="off">
+            <button class="btn btn--secondary" data-action="connect-token">连接</button>
+          </div>
+          <p class="inline-error" data-role="token-error" hidden></p>
+        </div>
         <div class="actions">
           <button class="btn btn--primary" data-action="start">启动</button>
           <button class="btn btn--secondary" data-action="retry">重试连接</button>

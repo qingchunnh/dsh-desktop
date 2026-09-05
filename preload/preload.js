@@ -16,6 +16,8 @@ if (location.protocol === 'file:' && location.pathname.endsWith('/renderer/index
     recheckEnv: () => ipcRenderer.invoke('recheck-env'),
     /** 仅重试连接 127.0.0.1:3080(用户在终端手动启动 dsh 后点击) */
     retryConnection: () => ipcRenderer.invoke('retry-connection'),
+    /** 用终端打印的带启动令牌 URL 连接(终端启动 dsh 的场景) */
+    connectWithToken: url => ipcRenderer.invoke('connect-with-token', url),
     /** 由桌面端启动 dsh web,端口就绪后自动连接 */
     startDsh: () => ipcRenderer.invoke('start-dsh'),
     /** 取消进行中的启动 */

@@ -6,6 +6,13 @@
  *   2. 否则检测 Node.js 与 dsh 环境 —— 缺失/版本过低时由渲染层给出对应引导;
  *   3. 环境就绪则展示「未启动」页,用户可选择由桌面端代为 `dsh web`,或在终端
  *      手动启动后点击「重试连接」。
+ *
+ * 浏览器鉴权:dsh ≥ 0.1.2-alpha.1 起,Web UI 要求启动令牌(见
+ * deepseek-harness packages/client/connection/src/browser-auth.ts)。
+ * 桌面端代启动时从 `dsh web` 打印的 URL 行解析 token 并用完整地址加载;
+ * 带 token 访问一次后服务端会种下签名 Cookie,后续裸地址重连即可放行。
+ * 用户在终端自行启动时桌面端拿不到 token(仅存于 dsh 进程内存),
+ * 需用户把终端打印的完整带 token 地址粘贴进来,由桌面端加载种 Cookie。
  */
 const { app, BrowserWindow, ipcMain, shell, nativeImage, screen } = require('electron')
 const fs = require('node:fs')
@@ -40,6 +47,14 @@ let mainWindow = null
 /** @type {DshRunner | null} */
 let runner = null
 let onlinePollTimer = null
+/**
+ * 已知当前 3080 上的 dsh 缺启动令牌(≥ 0.1.2)时为 true。
+ * connectToDsh 探测到 401 会回启动页,而启动页 bootstrap 会重新探测;
+ * 若无此标记,bootstrap 对仍在跑的 dsh 会再次裸连 → 401 → 再回启动页,
+ * 死循环。置位后 bootstrap 直接返回 authRequired 让渲染层展示粘贴区,
+ * 直到用户粘贴带令牌 URL 成功连接(connectToDsh 返回 true)后清除。
+ */
+let dshAuthRequired = false
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -105,6 +120,24 @@ function createWindow() {
 }
 
 /**
+ * 从 `dsh web` 的日志输出中提取带启动令牌的 URL。
+ * dsh ≥ 0.1.2-alpha.1 会打印 `dsh web: http://127.0.0.1:3080/?token=... (LAN: ...)`,
+ * 取第一个 http(s) 地址;旧版本无令牌输出,返回 null 走裸地址兼容路径。
+ */
+function extractAuthenticatedUrl(text) {
+  const match = /dsh web:\s*(https?:\/\/\S+)/.exec(text)
+  if (!match) return null
+  // 仅接受本机回环地址:LAN 地址的端口可能不是 3080,且桌面端只连本机
+  try {
+    const url = new URL(match[1])
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') return null
+    return url.href
+  } catch {
+    return null
+  }
+}
+
+/**
  * 回到本地启动器页面,reason 通过 query 传给渲染层用于展示提示。
  * (每次加载启动器页面,渲染层都会重新走一遍 bootstrap 流程)
  */
@@ -115,12 +148,33 @@ function backToLauncher(reason) {
   }
 }
 
-/** 连接 dsh Web UI 并开启在线轮询;窗口已关闭或加载失败会向上抛错 */
-async function connectToDsh() {
+/**
+ * 连接 dsh Web UI 并开启在线轮询;窗口已关闭或加载失败会向上抛错。
+ * url 默认裸地址;代启动场景传入带启动令牌的完整 URL(令牌见文件头说明),
+ * 加载一次后服务端种下 Cookie,后续裸地址重连即可放行。
+ *
+ * 401 探测:dsh ≥ 0.1.2 对无 Cookie 的裸地址返回 401 + 一行文本,这不是
+ * 网络错误,did-fail-load 不触发,loadURL 正常 resolve。需加载后探测页面
+ * 是否有 #root 根节点(401 页没有)。探测到 401 时置 dshAuthRequired 并回
+ * 启动页(渲染层已随 401 页卸载,必须重新加载启动页才能展示粘贴区),
+ * 由 bootstrap 的 dshAuthRequired 短路避免重复裸连造成死循环。
+ * @returns {Promise<boolean>} true=已进入 Web UI;false=服务在跑但缺令牌(已回启动页)
+ */
+async function connectToDsh(url = DSH_URL) {
   if (!mainWindow) throw new Error('窗口已关闭')
   stopOnlinePoll()
-  await mainWindow.loadURL(DSH_URL)
+  await mainWindow.loadURL(url)
+  const rejected = await mainWindow.webContents.executeJavaScript(
+    "document.getElementById('root') === null"
+  )
+  if (rejected) {
+    dshAuthRequired = true
+    backToLauncher('auth-required')
+    return false
+  }
+  dshAuthRequired = false
   startOnlinePoll()
+  return true
 }
 
 /** 在线后轮询端口,服务掉线则回到启动器页面(已连接过,此处只看端口存活即可) */
@@ -166,10 +220,19 @@ async function probeThenReport() {
   const occupied = await isPortReachable(DSH_HOST, DSH_PORT)
   // TCP 连通后再校验 dsh 指纹,避免误连其他占用 3080 的程序
   const isDsh = occupied && (await isDshRunning())
+  // 已知缺令牌(此前 401 回启动页):不再裸连,直接让渲染层展示粘贴区。
+  // 短路必须在 connectToDsh 之前,否则 bootstrap 会再次 401 → 死循环。
+  if (isDsh && dshAuthRequired) {
+    const env = checkEnvironment()
+    return { status: env.ok ? 'ready' : 'env-error', env, authRequired: true }
+  }
   if (isDsh) {
     try {
-      await connectToDsh()
-      return { status: 'online' }
+      const connected = await connectToDsh()
+      if (connected) return { status: 'online' }
+      // 缺令牌:connectToDsh 已回启动页并置 dshAuthRequired,本次返回可忽略
+      // (渲染层已随 backToLauncher 重新加载并重新 bootstrap,走上方短路)。
+      return { status: 'ready', env: checkEnvironment(), authRequired: true }
     } catch {
       /* 指纹匹配但页面加载失败,继续走离线流程 */
     }
@@ -192,12 +255,21 @@ ipcMain.handle('recheck-env', () => {
   return probeThenReport()
 })
 
-/** 仅重试连接 3080(用户在终端手动启动 dsh 后点击),校验 dsh 指纹 */
+/**
+ * 仅重试连接 3080(用户在终端手动启动 dsh 后点击),校验 dsh 指纹。
+ * 裸地址直连的前提是 Cookie 已种下(此前用带令牌 URL 成功连接过);
+ * 无 Cookie 时 connectToDsh 探测到 401 会回启动页并返回 false,
+ * 此处据此前置 authRequired,由渲染层展示粘贴 URL 入口。
+ */
 ipcMain.handle('retry-connection', async () => {
   try {
     if (await isDshRunning(DSH_HOST, DSH_PORT, 2000)) {
-      await connectToDsh()
-      return { ok: true }
+      // 即使已知缺令牌也尝试裸连:Cookie 绑定的是 dsh 持久化 secret 而非进程
+      // token,dsh 重启后旧 Cookie 仍可能有效,值得一试;无效则 connectToDsh
+      // 探测 401 回启动页并维持 dshAuthRequired,由重载后的 bootstrap 展示粘贴区
+      const connected = await connectToDsh()
+      if (connected) return { ok: true }
+      return { ok: false, authRequired: true }
     }
   } catch {
     /* 落入下方失败返回 */
@@ -207,6 +279,36 @@ ipcMain.handle('retry-connection', async () => {
   return { ok: false, occupied }
 })
 
+/**
+ * 用用户粘贴的带启动令牌 URL 连接(终端启动 dsh 的场景)。
+ * 校验:必须是 http(s) 协议、指向本机 3080、带 token 参数。
+ * 加载一次后服务端种下 Cookie,后续裸地址重连即可放行。
+ */
+ipcMain.handle('connect-with-token', async (_event, rawUrl) => {
+  if (typeof rawUrl !== 'string') return { ok: false, error: 'URL 必须是字符串' }
+  let url
+  try {
+    url = new URL(rawUrl.trim())
+  } catch {
+    return { ok: false, error: 'URL 格式不正确' }
+  }
+  if (!/^https?:$/.test(url.protocol)) return { ok: false, error: '仅支持 http/https 协议' }
+  if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+    return { ok: false, error: '仅支持本机地址(127.0.0.1 / localhost)' }
+  }
+  if (url.port !== String(DSH_PORT)) return { ok: false, error: `端口必须是 ${String(DSH_PORT)}` }
+  if (!url.searchParams.has('token')) return { ok: false, error: 'URL 缺少 token 参数' }
+  try {
+    const connected = await connectToDsh(url.href)
+    // 令牌错误:connectToDsh 探测到 401 已回启动页并置 dshAuthRequired,
+    // 重载后的 bootstrap 会走短路展示粘贴区;返回值随旧页面卸载
+    if (!connected) return { ok: false, authRequired: true }
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, error: error.message }
+  }
+})
+
 /** 由桌面端代为启动 dsh web,端口就绪后自动连接 */
 ipcMain.handle('start-dsh', async () => {
   if (!runner) runner = new DshRunner()
@@ -214,8 +316,11 @@ ipcMain.handle('start-dsh', async () => {
   // 用户可能在终端抢先启动了 dsh:已在线则直接连接,避免拉起重复实例造成端口冲突
   if (await isDshRunning()) {
     try {
-      await connectToDsh()
-      return { ok: true }
+      const connected = await connectToDsh()
+      if (connected) return { ok: true }
+      // 缺令牌:connectToDsh 已回启动页并置 dshAuthRequired,重载后的
+      // bootstrap 会走短路展示粘贴区;返回值随旧页面卸载
+      return { ok: false, authRequired: true }
     } catch (error) {
       return { ok: false, error: error.message }
     }
@@ -225,7 +330,11 @@ ipcMain.handle('start-dsh', async () => {
       if (mainWindow) mainWindow.webContents.send('dsh-log', text)
     })
     await waitForDshReady()
-    await connectToDsh()
+    // 优先使用 dsh 打印的带令牌 URL(≥ 0.1.2-alpha.1);旧版本无此输出,退而直连裸地址
+    const connected = await connectToDsh(extractAuthenticatedUrl(runner.logTail) || DSH_URL)
+    // 令牌 URL 必然有效(token 来自 dsh 自身日志),false 仅在极端时序下出现;
+    // 此时 connectToDsh 已回启动页, runner 仍在跑,按缺令牌流程交渲染层处理
+    if (!connected) return { ok: false, authRequired: true }
     return { ok: true }
   } catch (error) {
     const cancelled = runner.stopRequested

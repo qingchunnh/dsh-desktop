@@ -98,7 +98,15 @@ function handleStatus(result) {
   if (result.portOccupied && result.status === 'ready') {
     showNotice('检测到 127.0.0.1:3080 被其他程序占用，而非 dsh。请先释放该端口')
   }
-  if (result.status === 'ready') return show('offline')
+  if (result.status === 'ready') {
+    show('offline')
+    // dsh 在跑但缺启动令牌(≥ 0.1.2):展示粘贴 URL 入口
+    if (result.authRequired) {
+      showNotice('dsh 需要启动令牌才能连接，请粘贴终端打印的完整地址')
+      role('token-connect').hidden = false
+    }
+    return
+  }
   showEnvProblem(result.env)
 }
 
@@ -142,6 +150,13 @@ async function handleStart() {
     const result = await api.startDsh()
     if (result.ok) return // 主进程已切到 Web UI
     if (result.cancelled) return show('offline')
+    // 终端已起 dsh 但缺令牌:主进程已回启动页,回 offline 展示粘贴区
+    if (result.authRequired) {
+      show('offline')
+      showNotice('检测到他处启动的 dsh 需要启动令牌，请粘贴其终端打印的完整地址')
+      role('token-connect').hidden = false
+      return
+    }
     showStartError(result.error || '未知错误', result.log)
   } catch (error) {
     // IPC 层面的异常(主进程 handler 抛错),同样落到启动失败视图
@@ -173,8 +188,37 @@ async function handleRetry() {
       showNotice('127.0.0.1:3080 被其他程序占用，而非 dsh。请先释放该端口')
       return
     }
-    if (!result.ok) errorEl.hidden = false
+    if (!result.ok) {
+      errorEl.hidden = false
+      // dsh ≥ 0.1.2 需要启动令牌:展示粘贴 URL 的入口,清掉上次的错误提示
+      role('token-error').hidden = true
+      role('token-connect').hidden = false
+    }
   } catch {
+    errorEl.hidden = false
+    role('token-error').hidden = true
+    role('token-connect').hidden = false
+  }
+}
+
+/** 用粘贴的带令牌 URL 连接(终端启动 dsh 的场景) */
+async function handleConnectToken() {
+  const input = role('token-url')
+  const errorEl = role('token-error')
+  errorEl.hidden = true
+  const url = input.value.trim()
+  if (!url) {
+    errorEl.textContent = '请输入完整的带 token 的地址'
+    errorEl.hidden = false
+    return
+  }
+  try {
+    const result = await api.connectWithToken(url)
+    if (result.ok) return // 主进程已切到 Web UI
+    errorEl.textContent = result.error || '连接失败'
+    errorEl.hidden = false
+  } catch (error) {
+    errorEl.textContent = String((error && error.message) || error)
     errorEl.hidden = false
   }
 }
@@ -299,6 +343,7 @@ const actions = {
   start: () => guard(handleStart),
   retry: () => guard(handleRetry),
   recheck: () => guard(handleRecheck),
+  'connect-token': () => guard(handleConnectToken),
   'cancel-start': () => api.cancelStart(),
   'back-offline': () => show('offline'),
   'open-nodejs': () => api.openExternal(NODE_DOWNLOAD_URL),
@@ -317,6 +362,14 @@ document.querySelectorAll('[data-action]').forEach(button => {
   })
 })
 
+// 令牌输入框回车提交(与点击「连接」按钮等价)
+role('token-url').addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    guard(handleConnectToken)
+  }
+})
+
 // ---- 入口:展示断连提示(如有),然后开始引导流程 ----
 
 // footer 应用名后填充桌面端自身版本号
@@ -324,12 +377,18 @@ api.getAppVersion().then(version => {
   role('app-version').textContent = `v${version}`
 })
 
-// 主进程在「连接断开 / 加载失败」回到本页时会带上 reason query
+// 主进程在「连接断开 / 加载失败 / 缺令牌」回到本页时会带上 reason query
 const reason = new URLSearchParams(location.search).get('reason')
 if (reason) {
+  if (reason === 'auth-required') {
+    // dsh ≥ 0.1.2 缺启动令牌:展示粘贴区(bootstrap 的 authRequired 分支也会展示,此处兜底)
+    showNotice('dsh 需要启动令牌才能连接，请粘贴终端打印的完整地址')
+    role('token-connect').hidden = false
+  } else {
     showNotice(reason === 'disconnected'
       ? '与 127.0.0.1:3080 的连接已断开，DeepSeek Harness 可能已停止'
       : '无法加载 127.0.0.1:3080 页面，请检查 dsh 状态')
+  }
 }
 
 show('checking')

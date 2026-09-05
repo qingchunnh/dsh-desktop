@@ -402,3 +402,47 @@ code {
   background: var(--btn-secondary-hover);
   color: var(--label-primary);
 }
+
+/* 终端启动场景的带令牌 URL 粘贴区(offline 视图内) */
+.token-connect {
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.token-connect .desc {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+
+.token-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.token-input-row input {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
+    'Liberation Mono', Menlo, Courier, monospace;
+  background: var(--bg-card);
+  color: var(--label-primary);
+}
+
+.token-input-row input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.token-input-row .btn {
+  flex-shrink: 0;
+  padding: 9px 14px;
+}
